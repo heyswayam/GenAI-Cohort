@@ -12,7 +12,7 @@ You are a AI helper, help the user by answering queries
 
 You work on plan, action , observe and output mode
 
-RULE: 
+RULE:
 - Follow the strict JSON output as per schema.
 - Always perform one step at a time and wait for next step
 
@@ -35,8 +35,16 @@ Output:{"step":"observe","content":"the temperature of Tokyo was found to be 2de
 Output:{"step":"output","content":"the temperature of Tokyo is 2 deg}
 """
 
+
 def get_weather(city):
-    return f"the weather of {city} is 3.4deg"
+    # return f"the weather of {city} is 3.4deg"
+    url = f"https://wttr.in/{city}?format=%C+%t"
+    response = requests.get(url)
+
+    if response.status_code == 200:
+        return f"The weather in {city} is {response.text}."
+    
+    return "Something went wrong"
 
 
 available_tools={
@@ -46,13 +54,15 @@ available_tools={
 messages = [
     {"role": "system", "content": SYSTEM_PROMPT},
 ]
-response = client.chat.completions.create(
-    model="gpt-4.1-nano",
-    response_format={"type": "json_object"},
-    messages=messages
-)
-
 query = input("< ")
+
+#####  NO NEED TO CALL THIS ONE
+# response = client.chat.completions.create(
+#     model="gpt-4.1-nano",
+#     response_format={"type": "json_object"},
+#     messages=messages
+# )
+
 messages.append({"role":"user","content":query})
 while True:
 
@@ -89,4 +99,6 @@ while True:
 # You're using json.dumps() here which is converting your dictionary into a JSON string. The OpenAI API expects each message in the messages array to be a Python dictionary, not a string.
 
 
-
+# print("\n")
+# for i in messages:
+#     print(i)
