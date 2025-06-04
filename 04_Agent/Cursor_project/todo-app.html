@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Todo App</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            padding: 40px;
+        }
+        .todo-container {
+            background: white;
+            padding: 20px 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            max-width: 400px;
+            width: 100%;
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+        .input-section {
+            display: flex;
+            margin-bottom: 20px;
+        }
+        #new-todo {
+            flex: 1;
+            padding: 10px;
+            font-size: 16px;
+            border: 2px solid #ddd;
+            border-radius: 4px;
+            outline: none;
+            transition: border-color 0.3s ease;
+        }
+        #new-todo:focus {
+            border-color: #007bff;
+        }
+        #add-btn {
+            padding: 10px 20px;
+            margin-left: 10px;
+            background-color: #007bff;
+            border: none;
+            color: white;
+            font-size: 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        #add-btn:hover {
+            background-color: #0056b3;
+        }
+        ul#todo-list {
+            list-style-type: none;
+            padding: 0;
+            margin: 0;
+        }
+        ul#todo-list li {
+            padding: 12px 15px;
+            background-color: #f9f9f9;
+            border: 1px solid #ddd;
+            margin-bottom: 10px;
+            border-radius: 4px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        ul#todo-list li.completed {
+            text-decoration: line-through;
+            color: #888;
+            background-color: #e0e0e0;
+        }
+        ul#todo-list li button.delete-btn {
+            background-color: #dc3545;
+            border: none;
+            color: white;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.3s ease;
+        }
+        ul#todo-list li button.delete-btn:hover {
+            background-color: #c82333;
+        }
+    </style>
+</head>
+<body>
+    <div class="todo-container">
+        <h1>Simple Todo App</h1>
+        <div class="input-section">
+            <input type="text" id="new-todo" placeholder="Add a new todo..." />
+            <button id="add-btn">Add</button>
+        </div>
+        <ul id="todo-list"></ul>
+    </div>
+
+    <script>
+        const newTodoInput = document.getElementById('new-todo');
+        const addBtn = document.getElementById('add-btn');
+        const todoList = document.getElementById('todo-list');
+
+        function addTodo() {
+            const todoText = newTodoInput.value.trim();
+            if (todoText === '') return;
+
+            const li = document.createElement('li');
+            li.textContent = todoText;
+
+            // Toggle completed on click
+            li.addEventListener('click', function(e) {
+                if(e.target.tagName !== 'BUTTON') { // Prevent toggle when clicking delete button
+                    li.classList.toggle('completed');
+                }
+            });
+
+            // Create delete button
+            const deleteBtn = document.createElement('button');
+            deleteBtn.textContent = 'Delete';
+            deleteBtn.className = 'delete-btn';
+
+            deleteBtn.addEventListener('click', function() {
+                todoList.removeChild(li);
+            });
+
+            li.appendChild(deleteBtn);
+            todoList.appendChild(li);
+
+            newTodoInput.value = '';
+            newTodoInput.focus();
+        }
+
+        addBtn.addEventListener('click', addTodo);
+
+        // Add todo on Enter key
+        newTodoInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                addTodo();
+            }
+        });
+    </script>
+</body>
+</html>
