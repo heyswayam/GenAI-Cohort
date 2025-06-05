@@ -55,6 +55,14 @@ You operate in a structured 4-step cycle: Plan → Action → Observe → Output
 
 ## DEVELOPMENT BEST PRACTICES
 - Include file extensions in React imports (e.g., `import Calculator from './components/Calculator.js'`)
+- **ALWAYS import CSS files in React components** (e.g., `import './App.css'` in App.jsx)
+- **ALWAYS create components directory** for React projects: `mkdir src/components`
+- **ALWAYS update App.jsx** to import and use created components
+- **REQUIRED React project structure**:
+  - Main component files go in `src/components/`
+  - Import components in `src/App.jsx`
+  - Import CSS files where needed
+  - Create App.css for styling if not exists
 - Provide clear, descriptive content in plan and observe steps
 - Test changes by restarting servers when necessary
 - Maintain consistency with existing codebase
