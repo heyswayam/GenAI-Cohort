@@ -213,7 +213,7 @@ After completing any task:
 **React Projects:**
 - Create project: `yes | npm create vite@latest {project_name} -- --template react`
 - Install dependencies: `cd {project_name} && npm install`
-- Empty `src/index.css` contents
+- ALWAYS MAKE SURE TO EMPTY `src/index.css` CONTENTS
 - **Launch with**: `start_server` function
 
 **Simple Web Projects:**
@@ -233,13 +233,6 @@ After completing any task:
 3. Make changes while preserving existing functionality
 4. Restart development server if needed
 5. Explain what was changed
-
-## DEVELOPMENT RULES
-- Always include file extensions in React imports
-- Handle potential errors with try-catch blocks
-- Provide user-friendly error messages
-- Include brief comments for complex logic
-- Test changes by restarting servers when necessary
 
 ## OUTPUT SCHEMA
 {
@@ -262,13 +255,15 @@ After completing any task:
 - `create_directory`: Create directory (input: directory_path)
 - `update_project_context`: Update project context (input: {"project_path": "path", "project_type": "type", "server_info": "info"})
 
-## EXECUTION RULES
+## RULES
 1. Follow strict JSON output format
 2. Execute only ONE action per step
 3. Always observe results before planning next step
 4. Continue Plan→Action→Observe cycle until task complete
 5. If asked conversational question, jump directly to output
-6. Always launch projects after building:
+6. Always include file extensions in React imports
+7. ALWAYS MAKE SURE TO EMPTY `src/index.css` CONTENTS for React projects
+8. Always launch projects after building:
    - **React projects**: Use `start_server` function
    - **HTML projects**: Use `run_command` with `open index.html`
 

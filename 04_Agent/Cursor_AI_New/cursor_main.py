@@ -10,6 +10,13 @@ load_dotenv()
 
 client = OpenAI()
 
+# =====================================
+# TOKEN OPTIMIZATION CONFIGURATION
+# =====================================
+MAX_MESSAGES = 15  # Trigger summarization when messages exceed this count
+MIN_MESSAGES_AFTER_SUMMARY = 3  # Keep system + summary + current after optimization
+SUMMARY_MAX_TOKENS = 500  # Maximum tokens for conversation summary
+SHOW_MESSAGE_COUNT = True  # Show message count for debugging
 
 available_tools = {
     "get_weather": functions.get_weather,
@@ -27,6 +34,128 @@ available_tools = {
 }
 
 
+def estimate_token_count(messages):
+    """
+    Rough estimation of token count for a list of messages
+    This is a simple approximation: ~4 characters per token
+    """
+    total_chars = 0
+    for message in messages:
+        content = message.get("content", "")
+        total_chars += len(content)
+
+    # Rough estimate: 4 characters per token
+    estimated_tokens = total_chars // 4
+    return estimated_tokens
+
+
+def summarize_messages(messages_to_summarize):
+    """
+    Summarize a list of messages to reduce token usage while preserving context
+    """
+    try:
+        # Create a prompt to summarize the conversation
+        summary_prompt = """
+        Please summarize the following conversation between a user and an AI assistant that helps build applications.
+        Focus on:
+        1. What projects were created or worked on
+        2. Key features implemented
+        3. Important decisions made
+        4. Current project state
+        5. Any ongoing context that affects future actions
+        
+        Keep the summary concise but comprehensive enough to maintain context for future interactions.
+        
+        Conversation to summarize:
+        """
+
+        # Format messages for summarization
+        conversation_text = ""
+        for msg in messages_to_summarize:
+            role = msg.get("role", "unknown")
+            content = msg.get("content", "")
+
+            # Skip system messages in summarization
+            if role == "system":
+                continue
+
+            # For JSON responses, try to extract meaningful content
+            if role == "assistant":
+                try:
+                    parsed = json.loads(content)
+                    if parsed.get("step") == "output":
+                        conversation_text += f"Assistant: {parsed.get('content', '')}\n"
+                    elif parsed.get("step") == "plan":
+                        conversation_text += f"Assistant (planning): {parsed.get('content', '')}\n"
+                    elif parsed.get("step") == "action":
+                        conversation_text += f"Assistant (action): {parsed.get('function', '')} - {parsed.get('input', '')}\n"
+                except json.JSONDecodeError:
+                    conversation_text += f"Assistant: {content[:200]}...\n"
+            else:
+                conversation_text += f"User: {content}\n"
+
+        # Get summary from OpenAI
+        summary_response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": "You are a helpful assistant that creates concise summaries of conversations."},
+                {"role": "user", "content": summary_prompt + conversation_text}
+            ],
+            max_tokens=SUMMARY_MAX_TOKENS  # Use configuration constant
+        )
+
+        summary = summary_response.choices[0].message.content
+        return summary
+
+    except Exception as e:
+        print(f"⚠️  Warning: Failed to summarize messages: {e}")
+        # Return a basic summary if API call fails
+        return "Previous conversation included project setup and development tasks."
+
+
+def optimize_messages(messages):
+    """
+    Optimize message array to reduce token usage by summarizing old messages
+    """
+    if len(messages) <= MAX_MESSAGES:
+        return messages
+
+    # Calculate token usage before optimization
+    tokens_before = estimate_token_count(messages)
+
+    print(f"🔧 Token optimization: Summarizing {len(messages) - MIN_MESSAGES_AFTER_SUMMARY} messages...")
+    print(f"📊 Estimated tokens before: ~{tokens_before}")
+
+    # Keep system message (index 0) and current message (last one)
+    system_message = messages[0]
+    current_message = messages[-1]
+
+    # Messages to summarize (everything except system and current)
+    messages_to_summarize = messages[1:-1]
+
+    # Create summary
+    summary = summarize_messages(messages_to_summarize)
+
+    # Create new optimized message array
+    optimized_messages = [
+        system_message,
+        {"role": "assistant", "content": f"[CONVERSATION SUMMARY]: {summary}"},
+        current_message
+    ]
+
+    # Calculate token usage after optimization
+    tokens_after = estimate_token_count(optimized_messages)
+    tokens_saved = tokens_before - tokens_after
+    savings_percentage = (tokens_saved / tokens_before) * 100 if tokens_before > 0 else 0
+
+    print(f"✅ Optimization complete: {len(messages)} → {len(optimized_messages)} messages")
+    print(f"💰 Token savings: ~{tokens_saved} tokens ({savings_percentage:.1f}% reduction)")
+    print(f"📊 Estimated tokens after: ~{tokens_after}")
+
+    return optimized_messages
+
+
+
 def main():
     messages = [
         {"role": "system", "content": system_prompt.SYSTEM_PROMPT},
@@ -35,6 +164,7 @@ def main():
     print("🚀 Welcome to the Enhanced React AI Assistant!")
     print("💡 I can help you create new React projects or work with existing ones.")
     print("🔄 After completing any task, I'll ask if you want to make changes - we can keep improving your project together!")
+    print(f"⚡ Token optimization enabled: Auto-summarize when > {MAX_MESSAGES} messages")
     print("=" * 70)
 
     choice = input("\nEnter existing project path or describe what you want to do: ").strip()
@@ -48,6 +178,13 @@ def main():
 
     try:
         while True:
+            # Optimize messages to reduce token usage
+            # messages = optimize_messages(messages)
+
+            # Debug: Show current message count if enabled
+            if SHOW_MESSAGE_COUNT:
+                print(f"📊 Current message count: {len(messages)}")
+
             response = client.chat.completions.create(
                 model="gpt-4o-mini",
                 response_format={"type": "json_object"},
@@ -116,6 +253,9 @@ def main():
                     print("\n" + "=" * 70)
                     print("🔄 Processing your request...")
                     continue
+
+            # Optimize messages for token usage
+            # messages = optimize_messages(messages)
 
     except KeyboardInterrupt:
         print("\n🛑 Shutting down gracefully...")
