@@ -4,13 +4,11 @@ import requests
 from pathlib import Path
 import shutil
 import subprocess
-import threading
 import time
-import signal
 import os
 from typing import Optional, Dict, Any
 
-# Global dictionary to track running processes
+# Global dictionary to track running processes (simplified)
 running_processes = {}
 
 # Global variable to track current project context
@@ -21,6 +19,7 @@ current_project_context = {
     "server_name": None,
     "project_files": []
 }
+
 
 def get_weather(city):
     url = f"https://wttr.in/{city}?format=%C+%t"
@@ -56,6 +55,13 @@ def start_server(params: Dict[str, str]) -> str:
         command = params.get('command', 'npm start')
         server_name = params.get('name', f"server_{len(running_processes) + 1}")
 
+        # Kill all existing node processes first to prevent conflicts
+        try:
+            subprocess.run('pkill -f node', shell=True, capture_output=True)
+            print("Killed all existing node processes")
+        except Exception:
+            pass  # Continue even if pkill fails
+
         # Change to the specified directory
         if directory != '.':
             if not os.path.exists(directory):
@@ -71,11 +77,11 @@ def start_server(params: Dict[str, str]) -> str:
             process = subprocess.Popen(
                 command,
                 shell=True,
-                stdout=subprocess.DEVNULL,  # Redirect to null to prevent blocking
-                stderr=subprocess.DEVNULL,  # Redirect to null to prevent blocking
-                stdin=subprocess.DEVNULL,   # Prevent server from reading stdin
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                stdin=subprocess.DEVNULL,
                 text=True,
-                preexec_fn=os.setsid if hasattr(os, 'setsid') else None  # Create new process group
+                preexec_fn=os.setsid if hasattr(os, 'setsid') else None
             )
 
             # Store the process information
@@ -103,44 +109,8 @@ def start_server(params: Dict[str, str]) -> str:
 
             # Check if process is still running
             if process.poll() is None:
-                # Determine port for Vite/CRA servers
-                url_info = ""
-                if 'npm run dev' in command or 'yarn dev' in command:
-                    # Try to guess port based on running processes
-                    default_port = 5173
-                    used_ports = set()
-                    for info in running_processes.values():
-                        if 'npm run dev' in info['command'] or 'yarn dev' in info['command']:
-                            # Try to extract port from command if specified
-                            if '--port' in info['command']:
-                                try:
-                                    idx = info['command'].split().index('--port')
-                                    used_ports.add(int(info['command'].split()[idx + 1]))
-                                except Exception:
-                                    pass
-                            else:
-                                # Default Vite port
-                                used_ports.add(default_port)
-                    # Find next available port
-                    port = default_port
-                    while port in used_ports:
-                        port += 1
-                    url_info = f" Check http://localhost:{port}"
-                    return f"Development server '{server_name}' started successfully! PID: {process.pid}.{url_info}"
-                elif 'npm start' in command:
-                    # Default CRA port is 3000, but may increment if in use
-                    default_port = 3000
-                    used_ports = set()
-                    for info in running_processes.values():
-                        if 'npm start' in info['command']:
-                            used_ports.add(default_port)
-                    port = default_port
-                    while port in used_ports:
-                        port += 1
-                    url_info = f" Check http://localhost:{port}"
-                    return f"Server '{server_name}' started successfully! PID: {process.pid}.{url_info}"
-                else:
-                    return f"Server '{server_name}' started successfully! PID: {process.pid}"
+                # Always return localhost:5173 for development servers
+                return f"Development server '{server_name}' started successfully! PID: {process.pid}. Check http://localhost:5173"
             else:
                 return f"Server failed to start. Process exited with code: {process.returncode}"
 
@@ -155,85 +125,6 @@ def start_server(params: Dict[str, str]) -> str:
             os.chdir(original_dir)
         except:
             pass
-
-
-def stop_server(server_name: str) -> str:
-    """Stop a running server"""
-    global running_processes, current_project_context
-
-    if server_name not in running_processes:
-        return f"Server '{server_name}' not found"
-
-    try:
-        process_info = running_processes[server_name]
-        process = process_info['process']
-
-        if process.poll() is not None:
-            # Process already terminated
-            del running_processes[server_name]
-            return f"Server '{server_name}' was already stopped"
-
-        # Terminate the process more gracefully
-        try:
-            process.terminate()
-
-            # Wait for process to terminate
-            try:
-                process.wait(timeout=5)
-            except subprocess.TimeoutExpired:
-                # Force kill if it doesn't terminate gracefully
-                process.kill()
-                process.wait(timeout=2)
-
-        except Exception as kill_error:
-            return f"Error terminating process: {str(kill_error)}"
-
-        del running_processes[server_name]
-
-        # Update project context
-        if current_project_context["server_name"] == server_name:
-            current_project_context.update({
-                "server_running": False,
-                "server_name": None
-            })
-
-        return f"Server '{server_name}' stopped successfully"
-
-    except Exception as e:
-        return f"Error stopping server '{server_name}': {str(e)}"
-
-
-def list_servers() -> str:
-    """List all running servers"""
-    global running_processes
-
-    if not running_processes:
-        return "No servers currently running"
-
-    active_servers = []
-    inactive_servers = []
-
-    for name, info in list(running_processes.items()):
-        process = info['process']
-        if process.poll() is None:
-            # Process is still running
-            runtime = time.time() - info['start_time']
-            active_servers.append(f"- {name}: {info['command']} (PID: {process.pid}, Runtime: {runtime:.1f}s, Dir: {info['directory']})")
-        else:
-            # Process has died
-            inactive_servers.append(name)
-
-    # Clean up dead processes
-    for name in inactive_servers:
-        del running_processes[name]
-
-    if active_servers:
-        result = "Active servers:\n" + "\n".join(active_servers)
-        if inactive_servers:
-            result += f"\n\nCleaned up {len(inactive_servers)} inactive server(s)"
-        return result
-    else:
-        return "No active servers (cleaned up inactive processes)"
 
 
 def create_directory(directory_path: str) -> str:
@@ -320,9 +211,11 @@ def update_project_context(params: Dict[str, str]) -> str:
 
 def cleanup_processes():
     """Clean up all running processes on exit"""
-    global running_processes
-    for server_name in list(running_processes.keys()):
-        stop_server(server_name)
+    try:
+        subprocess.run('pkill -f node', shell=True, capture_output=True)
+        print("Cleaned up all node processes")
+    except Exception:
+        pass
 
 
 # Register cleanup function

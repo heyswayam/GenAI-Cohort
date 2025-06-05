@@ -15,8 +15,6 @@ available_tools = {
     "get_weather": functions.get_weather,
     "run_command": functions.run_command,
     "start_server": functions.start_server,
-    "stop_server": functions.stop_server,
-    "list_servers": functions.list_servers,
     "create_directory": functions.create_directory,
     "read_file": functions.read_file,
     "write_file": functions.write_file,
