@@ -1,6 +1,5 @@
 from dotenv import load_dotenv
 from rag_processor import RAGProcessor
-import time
 import streamlit as st
 
 # Page configuration - MUST be first Streamlit command
@@ -16,12 +15,8 @@ load_dotenv()
 # Initialize RAG processor
 
 
-@st.cache_resource
-def get_rag_processor():
-    return RAGProcessor()
-
-
-rag = get_rag_processor()
+rag = RAGProcessor()
+collection_name = rag.collection_name
 
 # Main title
 st.title("📚 RAG Chat Application")
@@ -31,12 +26,12 @@ st.markdown("Upload a PDF document and ask questions about its content!")
 with st.sidebar:
     st.header("📁 Document Upload")
 
-    # Collection name input
-    collection_name = st.text_input(
-        "Collection Name",
-        value="my_documents",
-        help="Name for your document collection in the vector database"
-    )
+    # # Collection name input
+    # collection_name = st.text_input(
+    #     "Collection Name",
+    #     value="my_documents",
+    #     help="Name for your document collection in the vector database"
+    # )
 
     # File uploader
     uploaded_file = st.file_uploader(
@@ -47,42 +42,30 @@ with st.sidebar:
 
     # Upload button
     if uploaded_file and st.button("🚀 Process PDF", type="primary"):
-        with st.spinner("Processing PDF..."):
-            # Progress bar
-            progress_bar = st.progress(0)
+        # Create progress bar and status containers
+        progress_bar = st.progress(0)
+        status_container = st.empty()
 
-            progress_bar.progress(25)
-            st.info("📄 Loading PDF...")
-            time.sleep(0.5)
+        # Define progress callback function
+        def update_progress(progress: int, message: str):
+            progress_bar.progress(progress)
+            status_container.info(message)
 
-            progress_bar.progress(50)
-            st.info("✂️ Chunking text...")
-            time.sleep(0.5)
+        # Process the PDF with real-time progress
+        success = rag.process_pdf(uploaded_file, progress_callback=update_progress)
 
-            progress_bar.progress(75)
-            st.info("🧠 Creating embeddings...")
-            time.sleep(0.5)
-
-            progress_bar.progress(90)
-            st.info("💾 Storing in vector database...")
-
-            # Process the PDF
-            success = rag.process_pdf(uploaded_file, collection_name)
-
-            progress_bar.progress(100)
-
-            if success:
-                st.success("✅ PDF processed successfully!")
-                st.balloons()
-            else:
-                st.error("❌ Error processing PDF. Please try again.")
+        if success:
+            status_container.success("✅ PDF processed successfully!")
+            st.balloons()
+        else:
+            status_container.error("❌ Error processing PDF. Please try again.")
 
     # Check if collection exists
-    if collection_name:
-        if rag.collection_exists(collection_name):
-            st.success(f"✅ Collection '{collection_name}' is ready!")
-        else:
-            st.warning(f"⚠️ Collection '{collection_name}' not found. Please upload a PDF first.")
+
+    if rag.collection_exists('my_rag_pdf'):
+        pass
+    else:
+        st.warning(f"⚠️ Collection not found. Please upload a PDF first.")
 
 # Main chat interface
 st.header("💬 Chat with your Document")
@@ -120,15 +103,13 @@ if prompt := st.chat_input("Ask a question about your document..."):
 
 # Footer
 st.markdown("---")
-col1, col2, col3 = st.columns(3)
+col1, col2 = st.columns(2)
 
 with col1:
     if st.button("🗑️ Clear Chat"):
         st.session_state.messages = []
         st.rerun()
 
-with col2:
-    st.markdown("**Status:** Vector Database Connected")
 
-with col3:
+with col2:
     st.markdown("**Model:** GPT-4o-mini + OpenAI Embeddings")

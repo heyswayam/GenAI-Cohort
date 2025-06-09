@@ -2,6 +2,7 @@
 
 import tempfile
 import os
+import time
 from typing import List, Optional, Callable
 
 from langchain_community.document_loaders import PyPDFLoader
@@ -19,25 +20,45 @@ class RAGProcessor:
         self.qdrant_url = qdrant_url
         self.embedding_model = OpenAIEmbeddings(model="text-embedding-3-small")
         self.openai_client = OpenAI()
+        self.collection_name = 'my_rag_pdf'
 
-    def process_pdf(self, uploaded_file, collection_name: str = "my_documents") -> bool:
+    def process_pdf(self, uploaded_file, collection_name: Optional[str] = None, progress_callback: Optional[Callable[[int, str], None]] = None) -> bool:
         """
-        Process uploaded PDF file and store in vector database
+        Process uploaded PDF file and store in vector database with real-time progress updates
+
+        Args:
+            uploaded_file: The uploaded PDF file
+            collection_name: Name of the collection to store documents
+            progress_callback: Optional callback function to report progress (progress_percent, status_message)
         """
         try:
-            # Save uploaded file to temporary location
+            if collection_name is None:
+                collection_name = self.collection_name
+            # Step 1: Save uploaded file to temporary location
+            if progress_callback:
+                progress_callback(10, "📄 Saving PDF file...")
+            time.sleep(0.5)  # Small delay to show progress
+
             with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp_file:
                 tmp_file.write(uploaded_file.read())
                 tmp_file_path = tmp_file.name
 
-            # Load PDF
+            # Step 2: Load PDF
+            if progress_callback:
+                progress_callback(25, "📖 Loading PDF content...")
+            time.sleep(0.5)
+
             loader = PyPDFLoader(tmp_file_path)
             docs = loader.load()
 
             # Clean up temporary file
             os.unlink(tmp_file_path)
 
-            # Chunking
+            # Step 3: Chunking
+            if progress_callback:
+                progress_callback(50, "✂️ Chunking text...")
+            time.sleep(0.5)
+
             text_splitter = RecursiveCharacterTextSplitter(
                 chunk_size=1000,
                 chunk_overlap=200,
@@ -45,6 +66,11 @@ class RAGProcessor:
                 is_separator_regex=False,
             )
             split_docs = text_splitter.split_documents(documents=docs)
+
+            # Step 4: Create embeddings and store
+            if progress_callback:
+                progress_callback(75, "🧠 Creating embeddings...")
+            time.sleep(0.5)
 
             # Store in vector database
             QdrantVectorStore.from_documents(
@@ -54,9 +80,15 @@ class RAGProcessor:
                 collection_name=collection_name,
             )
 
+            # Step 5: Complete
+            if progress_callback:
+                progress_callback(100, "✅ Processing complete!")
+
             return True
 
         except Exception as e:
+            if progress_callback:
+                progress_callback(0, f"❌ Error: {str(e)}")
             print(f"Error processing PDF: {e}")
             return False
 
