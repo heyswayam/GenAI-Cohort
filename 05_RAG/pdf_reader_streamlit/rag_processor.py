@@ -2,7 +2,7 @@
 
 import tempfile
 import os
-from typing import List, Optional
+from typing import List, Optional, Callable
 
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
