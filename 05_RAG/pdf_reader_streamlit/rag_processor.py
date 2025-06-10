@@ -9,6 +9,7 @@ from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_openai import OpenAIEmbeddings
 from langchain_qdrant import QdrantVectorStore
+from qdrant_client import QdrantClient
 from openai import OpenAI
 from dotenv import load_dotenv
 
@@ -72,6 +73,13 @@ class RAGProcessor:
             if progress_callback:
                 progress_callback(75, "🧠 Creating embeddings...")
             time.sleep(0.5)
+
+            # Check if collection exists and delete it
+            if self.collection_exists(collection_name):
+                if progress_callback:
+                    progress_callback(70, "🗑️ Deleting existing collection...")
+                self.delete_collection(collection_name)
+                time.sleep(0.5)
 
             # Store in vector database
             QdrantVectorStore.from_documents(
@@ -155,6 +163,26 @@ class RAGProcessor:
 
         except Exception as e:
             return f"Error querying documents: {str(e)}"
+
+    def delete_collection(self, collection_name: str) -> bool:
+        """
+        Delete a collection from the vector database
+        """
+        try:
+            from qdrant_client import QdrantClient
+
+            client = QdrantClient(
+                url=self.qdrant_url,
+                prefer_grpc=True,
+                api_key=os.getenv("QDRANT_API_KEY"),
+                timeout=30
+            )
+
+            client.delete_collection(collection_name=collection_name)
+            return True
+        except Exception as e:
+            print(f"Error deleting collection: {e}")
+            return False
 
     def collection_exists(self, collection_name: str) -> bool:
         """
