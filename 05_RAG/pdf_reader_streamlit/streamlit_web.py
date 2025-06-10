@@ -124,7 +124,7 @@ if uploaded_file:
         st.session_state.messages.append({"role": "assistant", "content": full_response})
 else:
     # Show a message when no PDF is uploaded
-    st.info("📄 Please upload and process a PDF document to start chatting!")
+    st.info("📄 Please upload and process a PDF document using the sidebar (tap the sidebar icon > if you don't see it) to start chatting!")
 
 # Footer
 st.markdown("---")
