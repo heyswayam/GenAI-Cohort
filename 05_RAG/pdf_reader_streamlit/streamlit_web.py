@@ -37,7 +37,8 @@ with st.sidebar:
     uploaded_file = st.file_uploader(
         "Choose a PDF file",
         type="pdf",
-        help="Upload a PDF document to chat about"
+        help="Upload a PDF document to chat about",
+        key="pdf_uploader"
     )
 
     # Upload button
@@ -57,8 +58,11 @@ with st.sidebar:
         if success:
             status_container.success("✅ PDF processed successfully!")
             st.balloons()
+            # Update collection status
+            st.session_state.collection_ready = True
         else:
-            status_container.error("❌ Error processing PDF. Please try again.")
+            status_container.error(f"❌ Error processing PDF. Please try again.: {status_container.error}")
+            st.session_state.collection_ready = False
 
     # Check if collection exists
 
@@ -67,24 +71,23 @@ with st.sidebar:
     else:
         st.warning(f"⚠️ Collection not found. Please upload a PDF first.")
 
-# Main chat interface
-st.header("💬 Chat with your Document")
 
-# Initialize chat history
+# Initialize chat history and collection status
 if "messages" not in st.session_state:
     st.session_state.messages = []
+
+# Initialize collection status in session state
+if "collection_ready" not in st.session_state:
+    st.session_state.collection_ready = rag.collection_exists(collection_name)
 
 # Display chat messages
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
-# Chat input
-if prompt := st.chat_input("Ask a question about your document..."):
-    # Check if collection exists
-    if not rag.collection_exists(collection_name):
-        st.error("❌ Please upload and process a PDF first!")
-    else:
+# Chat input - only show if collection is ready
+if uploaded_file:
+    if prompt := st.chat_input("Ask a question about your document..."):
         # Add user message to chat history
         st.session_state.messages.append({"role": "user", "content": prompt})
 
@@ -100,6 +103,9 @@ if prompt := st.chat_input("Ask a question about your document..."):
 
         # Add assistant response to chat history
         st.session_state.messages.append({"role": "assistant", "content": response})
+else:
+    # Show a message when no PDF is uploaded
+    st.info("📄 Please upload and process a PDF document to start chatting!")
 
 # Footer
 st.markdown("---")
@@ -108,8 +114,10 @@ col1, col2 = st.columns(2)
 with col1:
     if st.button("🗑️ Clear Chat"):
         st.session_state.messages = []
+        st.session_state.collection_ready = False
+        if 'pdf_uploader' in st.session_state:
+            del st.session_state['pdf_uploader']
         st.rerun()
 
-
 with col2:
-    st.markdown("**Model:** GPT-4o-mini + OpenAI Embeddings")
+    pass

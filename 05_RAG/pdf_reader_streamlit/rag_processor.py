@@ -16,7 +16,8 @@ load_dotenv()
 
 
 class RAGProcessor:
-    def __init__(self, qdrant_url: str = "http://localhost:6333"):
+    # def __init__(self, qdrant_url: str = "http://localhost:6333"):
+    def __init__(self, qdrant_url: str = "https://4ec974df-8488-4fe4-b46e-e4df3d23ce7d.eu-central-1-0.aws.cloud.qdrant.io:6333"):
         self.qdrant_url = qdrant_url
         self.embedding_model = OpenAIEmbeddings(model="text-embedding-3-small")
         self.openai_client = OpenAI()
@@ -77,7 +78,10 @@ class RAGProcessor:
                 documents=split_docs,
                 embedding=self.embedding_model,
                 url=self.qdrant_url,
+                prefer_grpc=True,
+                api_key=os.getenv("QDRANT_API_KEY"),
                 collection_name=collection_name,
+                # client_options={"check_compatibility": False}
             )
 
             # Step 5: Complete
@@ -101,7 +105,10 @@ class RAGProcessor:
             vector_store = QdrantVectorStore.from_existing_collection(
                 collection_name=collection_name,
                 url=self.qdrant_url,
-                embedding=self.embedding_model
+                prefer_grpc=True,
+                api_key=os.getenv("QDRANT_API_KEY"),
+                embedding=self.embedding_model,
+                # client_options={"check_compatibility": False}
             )
 
             # Search for similar documents
@@ -157,7 +164,10 @@ class RAGProcessor:
             vector_store = QdrantVectorStore.from_existing_collection(
                 collection_name=collection_name,
                 url=self.qdrant_url,
-                embedding=self.embedding_model
+                prefer_grpc=True,
+                api_key=os.getenv("QDRANT_API_KEY"),
+                embedding=self.embedding_model,
+                # client_options={"check_compatibility": False}
             )
             return True
         except:
