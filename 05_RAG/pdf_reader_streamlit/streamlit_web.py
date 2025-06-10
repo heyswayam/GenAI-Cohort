@@ -95,14 +95,33 @@ if uploaded_file:
         with st.chat_message("user"):
             st.markdown(prompt)
 
-        # Get AI response
+        # Get AI response with streaming
         with st.chat_message("assistant"):
+            message_placeholder = st.empty()
+            full_response = ""
+
             with st.spinner("🔍 Searching documents..."):
-                response = rag.query_documents(prompt, collection_name)
-            st.markdown(response)
+                # Get streaming response
+                response_stream = rag.query_documents(prompt, collection_name, stream=True)
+
+            # Handle streaming response
+            try:
+                for chunk in response_stream:
+                    if hasattr(chunk, 'choices') and chunk.choices and chunk.choices[0].delta.content:
+                        full_response += chunk.choices[0].delta.content
+                        message_placeholder.markdown(full_response + " ▌")
+
+                # Final update without cursor
+                message_placeholder.markdown(full_response)
+
+            except Exception as e:
+                # Fallback to non-streaming if streaming fails
+                st.warning("Streaming failed, falling back to regular response...")
+                full_response = rag.query_documents(prompt, collection_name, stream=False)
+                message_placeholder.markdown(full_response)
 
         # Add assistant response to chat history
-        st.session_state.messages.append({"role": "assistant", "content": response})
+        st.session_state.messages.append({"role": "assistant", "content": full_response})
 else:
     # Show a message when no PDF is uploaded
     st.info("📄 Please upload and process a PDF document to start chatting!")

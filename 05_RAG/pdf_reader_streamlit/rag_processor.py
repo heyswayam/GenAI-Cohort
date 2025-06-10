@@ -104,7 +104,7 @@ class RAGProcessor:
             print(f"Error processing PDF: {e}")
             return False
 
-    def query_documents(self, query: str, collection_name: str = "my_documents", num_results: int = 4) -> str:
+    def query_documents(self, query: str, collection_name: str = "my_documents", num_results: int = 4, stream: bool = False):
         """
         Query the vector database and get AI response
         """
@@ -123,6 +123,8 @@ class RAGProcessor:
             results = vector_store.similarity_search(query, k=num_results)
 
             if not results:
+                if stream:
+                    return iter(["No relevant documents found for your query."])
                 return "No relevant documents found for your query."
 
             # Format context
@@ -156,13 +158,20 @@ class RAGProcessor:
                     {'role': "user", 'content': query}
                 ],
                 temperature=0.7,
-                max_tokens=1000
+                max_tokens=1000,
+                stream=stream
             )
 
-            return response.choices[0].message.content
+            if stream:
+                return response
+            else:
+                return response.choices[0].message.content
 
         except Exception as e:
-            return f"Error querying documents: {str(e)}"
+            error_msg = f"Error querying documents: {str(e)}"
+            if stream:
+                return iter([error_msg])
+            return error_msg
 
     def delete_collection(self, collection_name: str) -> bool:
         """
