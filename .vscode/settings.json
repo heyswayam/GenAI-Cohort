@@ -4,7 +4,8 @@
 		"**/.svn": true,
 		"**/.hg": true,
 		"**/.DS_Store": true,
-		"**/Thumbs.db": true
+		"**/Thumbs.db": true,
+		"/Users/swayam/Documents/CodeBase/AI/genai_2.0_class": true
 	},
 	"hide-files.files": [],
 	"C_Cpp.errorSquiggles": "enabled"
